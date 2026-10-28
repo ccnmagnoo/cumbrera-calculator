@@ -1,0 +1,9 @@
+{
+  "name": "cumbrera",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Calculadora de planchas para techumbres con varias aguas, limatesas y limahoyas.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

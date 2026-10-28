@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1d2420">
+  <meta name="description" content="Calculadora de planchas para techumbres con varias aguas, limatesas y limahoyas. Dibuja la cubierta y calcula materiales.">
+  <title>Cumbrera · Calculadora de planchas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23c2634a'/%3E%3Cpath d='M11 33 32 15l21 18M18 30v20h28V30' fill='none' stroke='%23fff8ef' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <svg width="0" height="0" class="svg-sprite" aria-hidden="true">
+    <symbol id="i-select" viewBox="0 0 24 24">
+      <path d="M5 3l14 8-6.2 1.6L9.6 19 5 3z"/>
+    </symbol>
+    <symbol id="i-draw" viewBox="0 0 24 24">
+      <path d="M4 20l4-1L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4z"/>
+      <path d="M14.5 6.5l3 3"/>
+    </symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24">
+      <path d="M9 14 4 9l5-5"/>
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+    </symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24">
+      <path d="M15 14l5-5-5-5"/>
+      <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>
+    </symbol>
+    <symbol id="i-zoom-in" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="7"/>
+      <path d="M21 21l-4.5-4.5M11 8v6M8 11h6"/>
+    </symbol>
+    <symbol id="i-zoom-out" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="7"/>
+      <path d="M21 21l-4.5-4.5M8 11h6"/>
+    </symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24">
+      <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>
+    </symbol>
+    <symbol id="i-download" viewBox="0 0 24 24">
+      <path d="M12 3v12M12 15l4-4M12 15l-4-4"/>
+      <path d="M4 17v3h16v-3"/>
+    </symbol>
+    <symbol id="i-help" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M9.6 9a2.5 2.5 0 1 1 4.1 1.9c-.9.7-1.7 1.1-1.7 2.6"/>
+      <path d="M12 17h.01"/>
+    </symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24">
+      <path d="M4 4v5h5"/>
+      <path d="M4.7 9a8 8 0 1 1-.6 5"/>
+    </symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24">
+      <path d="M21 12a9 9 0 1 1-2.6-6.4"/>
+      <path d="M21 3v6h-6"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24">
+      <path d="M4 12l5 5L20 6"/>
+    </symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24">
+      <path d="M12 3 2.5 20h19L12 3z"/>
+      <path d="M12 9v5M12 17h.01"/>
+    </symbol>
+    <symbol id="i-info" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 11v6M12 7h.01"/>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 24 24">
+      <path d="M6 6l12 12M18 6L6 18"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14"/>
+    </symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24">
+      <path d="M9 6l6 6-6 6"/>
+    </symbol>
+  </svg>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32">
+          <path d="M5 15.5 16 6l11 9.5"/>
+          <path d="M9 14v12h14V14"/>
+          <path d="M13 26v-7h6v7"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <h1>Cumbrera</h1>
+        <p>Calculadora de planchas</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="header-result" title="Planchas totales">
+        <span id="headerSheets">—</span>
+        <span class="header-result-label">planchas</span>
+      </span>
+      <span class="save-state" id="saveState" title="El diseño se guarda en este navegador">
+        <span class="save-dot"></span>
+        <span id="saveStateText">Guardado local</span>
+      </span>
+      <button class="btn btn-header" id="helpBtn" type="button" aria-label="Abrir ayuda" title="Ayuda">
+        <svg class="icon"><use href="#i-help"></use></svg>
+        <span>Ayuda</span>
+      </button>
+      <button class="btn btn-header" id="exportBtn" type="button" aria-label="Exportar CSV" title="Exportar CSV">
+        <svg class="icon"><use href="#i-download"></use></svg>
+        <span>Exportar CSV</span>
+      </button>
+      <button class="btn btn-header btn-header-quiet" id="resetBtn" type="button" aria-label="Reiniciar diseño" title="Reiniciar">
+        <svg class="icon"><use href="#i-reset"></use></svg>
+        <span>Reiniciar</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-grid">
+    <aside class="side side-left">
+      <section class="card card-pad">
+        <div class="card-heading">
+          <h2>Plantillas</h2>
+          <span class="eyebrow">Empezar</span>
+        </div>
+        <div class="template-grid" id="templateGrid"></div>
+        <p class="micro">Aplicar una plantilla reemplaza el diseño actual. Puedes deshacer.</p>
+      </section>
+
+      <section class="card card-pad">
+        <div class="card-heading">
+          <h2>Cubierta</h2>
+          <span class="badge-soft" id="pitchBadge">30%</span>
+        </div>
+        <div class="field-grid">
+          <label class="field">
+            <span class="field-label">Pendiente</span>
+            <span class="input-shell">
+              <input id="pitchInput" type="number" min="1" max="120" step="1" inputmode="decimal" value="30">
+              <span class="unit">%</span>
+            </span>
+          </label>
+          <label class="field">
+            <span class="field-label">Altura de alero</span>
+            <span class="input-shell">
+              <input id="eaveInput" type="number" min="0.5" max="20" step="0.05" inputmode="decimal" value="2.50">
+              <span class="unit">m</span>
+            </span>
+          </label>
+          <label class="field field-wide">
+            <span class="field-label">Cumbrera más alta <span class="field-hint">editable</span></span>
+            <span class="input-shell">
+              <input id="ridgeInput" type="number" min="0.5" max="30" step="0.05" inputmode="decimal" value="3.70">
+              <span class="unit">m</span>
+            </span>
+          </label>
+        </div>
+        <div class="derived-line" id="roofDerived">Pendiente 16,7° · Desarrollo máximo 4,00 m</div>
+        <p class="micro">La cumbrera se calcula con el agua de mayor desarrollo. Si la editas, se ajusta la pendiente de toda la techumbre.</p>
+      </section>
+
+      <section class="card card-pad">
+        <div class="card-heading">
+          <h2>Plancha</h2>
+          <span class="badge-soft" id="sheetBadge">0,76 m útil</span>
+        </div>
+        <label class="field field-wide">
+          <span class="field-label">Tipo de plancha</span>
+          <span class="select-shell">
+            <select id="sheetPreset">
+              <option value="zinc">Zinc liso 0,8 m</option>
+              <option value="ondulada">Ondulada 1,0 m</option>
+              <option value="custom">Personalizada</option>
+            </select>
+            <svg class="select-chevron" aria-hidden="true"><use href="#i-chevron"></use></svg>
+          </span>
+        </label>
+        <div class="field-grid">
+          <label class="field">
+            <span class="field-label">Ancho total</span>
+            <span class="input-shell">
+              <input id="sheetWidth" type="number" min="0.3" max="3" step="0.01" inputmode="decimal" value="0.80">
+              <span class="unit">m</span>
+            </span>
+          </label>
+          <label class="field">
+            <span class="field-label">Traslape lateral</span>
+            <span class="input-shell">
+              <input id="sheetOverlap" type="number" min="0" max="0.5" step="0.01" inputmode="decimal" value="0.04">
+              <span class="unit">m</span>
+            </span>
+          </label>
+          <label class="field">
+            <span class="field-label">Largo máximo</span>
+            <span class="input-shell">
+              <input id="sheetMaxLength" type="number" min="0.5" max="20" step="0.1" inputmode="decimal" value="6.0">
+              <span class="unit">m</span>
+            </span>
+          </label>
+          <label class="field">
+            <span class="field-label">Redondeo de largo</span>
+            <span class="input-shell">
+              <input id="sheetStep" type="number" min="0.01" max="1" step="0.01" inputmode="decimal" value="0.10">
+              <span class="unit">m</span>
+            </span>
+          </label>
+          <label class="field">
+            <span class="field-label">Traslape longitudinal</span>
+            <span class="input-shell">
+              <input id="sheetLongOverlap" type="number" min="0" max="1" step="0.01" inputmode="decimal" value="0.15">
+              <span class="unit">m</span>
+            </span>
+          </label>
+          <label class="field">
+            <span class="field-label">Margen de corte</span>
+            <span class="input-shell">
+              <input id="sheetMargin" type="number" min="0" max="1" step="0.01" inputmode="decimal" value="0.05">
+              <span class="unit">m</span>
+            </span>
+          </label>
+        </div>
+        <div class="derived-line" id="sheetDerived">Ancho útil 0,76 m · 14 franjas cada 10,00 m</div>
+      </section>
+
+      <section class="card card-pad results-card">
+        <div class="card-heading">
+          <h2>Resultados</h2>
+          <span class="eyebrow">Estimación</span>
+        </div>
+        <div class="result-hero">
+          <span class="result-number" id="statSheets">—</span>
+          <span class="result-unit">planchas</span>
+        </div>
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <span>Metros lineales</span>
+            <strong id="statLinear">—</strong>
+          </div>
+          <div class="mini-stat">
+            <span>Superficie de cubierta</span>
+            <strong id="statArea">—</strong>
+          </div>
+          <div class="mini-stat">
+            <span>Área comprada</span>
+            <strong id="statPurchased">—</strong>
+          </div>
+          <div class="mini-stat">
+            <span>Desperdicio</span>
+            <strong id="statWaste">—</strong>
+          </div>
+        </div>
+        <div class="waste-wrap" title="Proporción de superficie aprovechada del total comprado">
+          <div class="waste-bar"><span id="wasteUseful"></span></div>
+          <div class="waste-caption"><span>Superficie útil</span><span id="wastePct">—</span></div>
+        </div>
+        <div class="cuts-block">
+          <div class="cuts-head">
+            <span>Largos a pedir</span>
+            <span class="hint" id="cutsHint"></span>
+          </div>
+          <div class="chips" id="cutChips"></div>
+          <p class="micro" id="cutsNote" hidden>Las piezas cortas pueden salir de recortes de las planchas más largas.</p>
+        </div>
+        <p class="micro disclaimer">Cálculo conservador, sin reutilizar recortes. No incluye estructura, fijaciones ni aislación.</p>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <div class="card editor-card">
+        <div class="editor-toolbar">
+          <div class="tool-group" role="group" aria-label="Herramientas del plano">
+            <button class="tool-btn is-active" id="selectTool" type="button" data-tool="select" title="Seleccionar (V)" aria-label="Seleccionar" aria-pressed="true">
+              <svg class="icon"><use href="#i-select"></use></svg>
+            </button>
+            <button class="tool-btn tool-btn-labeled" id="drawTool" type="button" data-tool="draw" title="Dibujar agua (P)" aria-label="Dibujar agua" aria-pressed="false">
+              <svg class="icon"><use href="#i-draw"></use></svg>
+              <span>Dibujar agua</span>
+            </button>
+          </div>
+          <span class="tool-sep" aria-hidden="true"></span>
+          <div class="tool-group" role="group" aria-label="Historial">
+            <button class="icon-btn" id="undoBtn" type="button" title="Deshacer (Ctrl+Z)" aria-label="Deshacer" disabled>
+              <svg class="icon"><use href="#i-undo"></use></svg>
+            </button>
+            <button class="icon-btn" id="redoBtn" type="button" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer" disabled>
+              <svg class="icon"><use href="#i-redo"></use></svg>
+            </button>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <span class="coord-readout" id="cursorReadout">— · — m</span>
+          <div class="tool-group" role="group" aria-label="Zoom">
+            <button class="icon-btn" id="zoomOutBtn" type="button" title="Alejar" aria-label="Alejar">
+              <svg class="icon"><use href="#i-zoom-out"></use></svg>
+            </button>
+            <button class="icon-btn" id="zoomInBtn" type="button" title="Acercar" aria-label="Acercar">
+              <svg class="icon"><use href="#i-zoom-in"></use></svg>
+            </button>
+            <button class="icon-btn" id="fitBtn" type="button" title="Ajustar a la vista" aria-label="Ajustar a la vista">
+              <svg class="icon"><use href="#i-fit"></use></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="plan-wrap" id="planWrap">
+          <svg id="planSvg" class="plan-svg" role="img" aria-label="Plano editable de la techumbre">
+            <g id="planWorld">
+              <g id="gridLayer"></g>
+              <g id="panoLayer"></g>
+              <g id="edgeLayer"></g>
+              <g id="unionLayer"></g>
+              <g id="labelLayer"></g>
+              <g id="drawLayer"></g>
+            </g>
+          </svg>
+          <div class="plan-badge"><span class="status-dot"></span> Planta · m</div>
+          <div class="plan-north" aria-hidden="true"><span>N</span><svg viewBox="0 0 20 32"><path d="M10 29V4M4 10l6-6 6 6"/></svg></div>
+          <div class="plan-scale" aria-hidden="true">
+            <span class="scale-bar" id="scaleBar"></span>
+            <span id="scaleLabel">2 m</span>
+          </div>
+          <div class="plan-legend" aria-hidden="true">
+            <span><i class="legend-line eave"></i>Alero</span>
+            <span><i class="legend-line high"></i>Cumbrera / limatesa</span>
+            <span><i class="legend-line valley"></i>Limahoya</span>
+          </div>
+          <div class="draw-hint" id="drawHint" hidden>
+            <span class="draw-hint-text" id="drawHintText">Dibujando agua · 0 vértices</span>
+            <button class="btn btn-mini" id="drawCloseBtn" type="button" disabled>Cerrar agua</button>
+            <button class="icon-btn" id="drawCancelBtn" type="button" title="Cancelar" aria-label="Cancelar dibujo">
+              <svg class="icon"><use href="#i-x"></use></svg>
+            </button>
+          </div>
+          <div class="plan-empty" id="planEmpty">
+            <div class="empty-icon">
+              <svg viewBox="0 0 64 64" aria-hidden="true">
+                <path d="M8 34 32 13l24 21"/>
+                <path d="M15 30v22h34V30"/>
+                <path d="M27 52V38h10v14"/>
+              </svg>
+            </div>
+            <h3>Tu techumbre empieza aquí</h3>
+            <p>Dibuja un agua o elige una plantilla para ver el cálculo.</p>
+            <button class="btn btn-primary" id="emptyDrawBtn" type="button">
+              <svg class="icon"><use href="#i-draw"></use></svg>
+              Dibujar agua
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card breakdown-card">
+        <div class="card-heading">
+          <div>
+            <h2>Desglose por agua</h2>
+            <p class="subheading">Planchas y superficies de cada paño</p>
+          </div>
+          <span class="badge-soft" id="panoCountBadge">0 aguas</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Agua</th>
+                <th class="num">Superficie</th>
+                <th class="num">Planchas</th>
+                <th class="num">Largo máx.</th>
+              </tr>
+            </thead>
+            <tbody id="panoTableBody"></tbody>
+            <tfoot id="panoTableFoot"></tfoot>
+          </table>
+        </div>
+        <div class="unions-block">
+          <div class="unions-head">
+            <span>Uniones de aguas</span>
+            <span class="hint">longitud lineal</span>
+          </div>
+          <div class="union-grid">
+            <div class="union-item">
+              <span><i class="legend-line high"></i>Cumbrera</span>
+              <strong id="unionRidge">—</strong>
+            </div>
+            <div class="union-item">
+              <span><i class="legend-line hip"></i>Limatesa</span>
+              <strong id="unionHip">—</strong>
+            </div>
+            <div class="union-item">
+              <span><i class="legend-line valley"></i>Limahoya</span>
+              <strong id="unionValley">—</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side side-right">
+      <section class="card view-card">
+        <div class="card-heading">
+          <div>
+            <h2>Vista 3D</h2>
+            <p class="subheading">Arrastra para girar · rueda para acercar</p>
+          </div>
+          <button class="icon-btn" id="resetViewBtn" type="button" title="Restablecer vista" aria-label="Restablecer vista 3D">
+            <svg class="icon"><use href="#i-refresh"></use></svg>
+          </button>
+        </div>
+        <div class="view3d-wrap" id="view3dWrap">
+          <canvas id="view3d"></canvas>
+          <div class="view3d-empty" id="view3dEmpty">Sin aguas para mostrar</div>
+        </div>
+        <div class="view3d-foot">
+          <span id="viewHeights">Alero 2,50 m · Cumbrera 3,70 m</span>
+          <div class="view-toggles">
+            <label class="check"><input type="checkbox" id="labels3d"> Etiquetas</label>
+            <label class="check"><input type="checkbox" id="showSheets3d"> Planchas</label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card properties-card">
+        <div class="pano-empty" id="panoEmpty">
+          <div class="pano-empty-mark">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M6 25 24 9l18 16"/>
+              <path d="M11 22v17h26V22"/>
+              <path d="M20 39V28h8v11"/>
+            </svg>
+          </div>
+          <h2>Selecciona un agua</h2>
+          <p>Haz clic en un paño del plano para ajustar su dirección, forma y vértices.</p>
+        </div>
+        <div class="pano-editor" id="panoEditor" hidden>
+          <div class="pano-head">
+            <span class="pano-color" id="panoColor"></span>
+            <input id="panoName" class="pano-name" type="text" value="" aria-label="Nombre del agua" maxlength="40">
+            <button class="icon-btn danger" id="panoDelete" type="button" title="Eliminar agua" aria-label="Eliminar agua">
+              <svg class="icon"><use href="#i-trash"></use></svg>
+            </button>
+          </div>
+
+          <div class="direction-block">
+            <svg id="dialSvg" class="dial" viewBox="0 0 92 92" role="img" aria-label="Dirección de escurrimiento">
+              <circle cx="46" cy="46" r="39" class="dial-bg"/>
+              <g class="dial-ticks">
+                <line x1="46" y1="4" x2="46" y2="9"/>
+                <line x1="76.5" y1="15.5" x2="73" y2="19"/>
+                <line x1="88" y1="46" x2="83" y2="46"/>
+                <line x1="76.5" y1="76.5" x2="73" y2="73"/>
+                <line x1="46" y1="88" x2="46" y2="83"/>
+                <line x1="15.5" y1="76.5" x2="19" y2="73"/>
+                <line x1="4" y1="46" x2="9" y2="46"/>
+                <line x1="15.5" y1="15.5" x2="19" y2="19"/>
+              </g>
+              <text x="46" y="20" class="dial-label" text-anchor="middle">N</text>
+              <text x="72" y="49" class="dial-label" text-anchor="middle">E</text>
+              <text x="46" y="78" class="dial-label" text-anchor="middle">S</text>
+              <text x="20" y="49" class="dial-label" text-anchor="middle">O</text>
+              <g id="dialArrow" class="dial-arrow" transform="rotate(180 46 46)">
+                <line x1="46" y1="46" x2="46" y2="24"/>
+                <path d="M40.5 28.5 46 19.5l5.5 9z"/>
+                <circle cx="46" cy="46" r="3.2"/>
+              </g>
+            </svg>
+            <div class="direction-fields">
+              <div class="direction-name" id="directionName">Sur · 180°</div>
+              <label class="field">
+                <span class="field-label">Ángulo de escurrimiento</span>
+                <span class="input-shell">
+                  <input id="directionInput" type="number" min="0" max="359" step="1" inputmode="numeric" value="180">
+                  <span class="unit">°</span>
+                </span>
+              </label>
+              <p class="micro">Hacia dónde baja el agua. Arrastra la flecha del dial para cambiarla.</p>
+            </div>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric"><span>Superficie</span><strong id="panoArea">—</strong></div>
+            <div class="metric"><span>Desarrollo</span><strong id="panoRun">—</strong></div>
+            <div class="metric"><span>Altura máx.</span><strong id="panoHeight">—</strong></div>
+            <div class="metric"><span>Planchas</span><strong id="panoSheets">—</strong></div>
+            <div class="metric"><span>Columnas</span><strong id="panoColumns">—</strong></div>
+            <div class="metric"><span>Largo mayor</span><strong id="panoMaxPiece">—</strong></div>
+          </div>
+
+          <div class="cuts-block pano-cuts">
+            <div class="cuts-head"><span>Largos a pedir</span><span class="hint" id="panoCutsHint"></span></div>
+            <div class="chips" id="panoCutChips"></div>
+          </div>
+
+          <details class="vertices-block">
+            <summary>Coordenadas de los vértices</summary>
+            <div class="vertex-table" id="vertexTable"></div>
+            <p class="micro">Origen arriba a la izquierda; Y crece hacia abajo. Al mover un vértice compartido, se mueve en todas las aguas conectadas.</p>
+          </details>
+
+          <p class="micro pano-tip">Arrastra los vértices en el plano para ajustar la forma. Los cambios se reflejan en el 3D y en el cálculo.</p>
+        </div>
+      </section>
+
+      <section class="card warnings-card">
+        <div class="card-heading">
+          <h2>Revisión</h2>
+          <span class="badge-soft" id="warningBadge">Sin novedades</span>
+        </div>
+        <ul class="warnings-list" id="warningsList"></ul>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="app-footer">
+    <div>
+      <strong>Cumbrera</strong>
+      <span>· Estimación de planchas para techumbres</span>
+    </div>
+    <div class="footer-note">
+      Las medidas están en metros. Dibuja incluyendo aleros si corresponde. Verifica el cálculo con tu proveedor antes de comprar.
+      <button class="link-btn" id="methodBtn" type="button">Cómo se calcula</button>
+    </div>
+  </footer>
+
+  <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
+    <div class="dialog-head">
+      <div>
+        <span class="eyebrow">Guía rápida</span>
+        <h2 id="helpTitle">Cómo usar Cumbrera</h2>
+      </div>
+      <button class="icon-btn" id="helpClose" type="button" aria-label="Cerrar ayuda">
+        <svg class="icon"><use href="#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="dialog-body">
+      <section>
+        <h3>1. Dibuja la techumbre en planta</h3>
+        <p>Parte con una plantilla o presiona <strong>Dibujar agua</strong>. Haz clic en cada vértice y cierra en el primer punto o con Enter. Cada paño es un agua; las aguas vecinas comparten vértices y generan cumbreras, limatesas o limahoyas.</p>
+      </section>
+      <section>
+        <h3>2. Ajusta aguas y alturas</h3>
+        <p>Selecciona un agua y arrastra sus vértices. La flecha del dial indica hacia dónde escurre el agua. La pendiente y la altura de alero son generales: con ellas se calcula la altura de cada cumbrera y el largo real de las planchas. También puedes editar la cumbrera más alta: la app ajusta la pendiente.</p>
+      </section>
+      <section>
+        <h3>3. Configura la plancha</h3>
+        <p>Elige el tipo de plancha o ingresa ancho total, traslape lateral, largo máximo, redondeo, traslape longitudinal y margen de corte. El ancho útil es el ancho total menos el traslape lateral.</p>
+      </section>
+      <section>
+        <h3>4. Revisa y exporta</h3>
+        <p>El desglose muestra planchas, largos a pedir y longitud de uniones. La vista 3D permite comprobar la forma y las alturas. Exporta el CSV para cotizar o compartir.</p>
+      </section>
+      <div class="method-box">
+        <h3>Cómo se calcula</h3>
+        <p>Cada agua se divide en franjas paralelas al escurrimiento, separadas por el ancho útil. Para cada franja se mide el recorrido real hasta la cumbrera, limatesa o limahoya y se suma un margen de corte. El largo se redondea hacia arriba al múltiplo configurado. Si supera el largo máximo, se divide en tramos con traslape longitudinal.</p>
+        <p>El cálculo es conservador: no reutiliza recortes entre franjas. No incluye estructura, costaneras, fijaciones, aislación, canaletas ni cumbreras como material (solo informa su longitud).</p>
+      </div>
+      <div class="shortcut-box">
+        <h3>Atajos</h3>
+        <dl>
+          <div><dt>V</dt><dd>Seleccionar</dd></div>
+          <div><dt>P</dt><dd>Dibujar agua</dd></div>
+          <div><dt>Enter</dt><dd>Cerrar el agua en dibujo</dd></div>
+          <div><dt>Esc</dt><dd>Cancelar o deseleccionar</dd></div>
+          <div><dt>Ctrl + Z</dt><dd>Deshacer</dd></div>
+          <div><dt>Ctrl + Shift + Z</dt><dd>Rehacer</dd></div>
+          <div><dt>Supr</dt><dd>Eliminar el agua seleccionada</dd></div>
+        </dl>
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <span>Medidas en metros · Guardado automático en este navegador</span>
+      <button class="btn btn-primary" id="helpOk" type="button">Entendido</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/geometry.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
