@@ -77,6 +77,15 @@
     <symbol id="i-chevron" viewBox="0 0 24 24">
       <path d="M9 6l6 6-6 6"/>
     </symbol>
+    <symbol id="i-star" viewBox="0 0 24 24">
+      <path d="M12 3.4l2.7 5.5 6 .9-4.4 4.3 1 6-5.3-2.8-5.3 2.8 1-6L3.3 9.8l6-.9L12 3.4z"/>
+    </symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 12h16M4 17h16"/>
+      <circle cx="9" cy="7" r="2"/>
+      <circle cx="15" cy="12" r="2"/>
+      <circle cx="7" cy="17" r="2"/>
+    </symbol>
   </svg>
 
   <header class="app-header">
@@ -133,11 +142,16 @@
           <h2>Cubierta</h2>
           <span class="badge-soft" id="pitchBadge">30%</span>
         </div>
+        <div class="principal-line" id="principalLine" title="Marca otra agua con la estrella de su ficha para cambiar la referencia">
+          <svg class="icon star" aria-hidden="true"><use href="#i-star"></use></svg>
+          <span>Agua principal</span>
+          <strong id="principalName">—</strong>
+        </div>
         <div class="field-grid">
           <label class="field">
-            <span class="field-label">Pendiente</span>
+            <span class="field-label">Pendiente principal</span>
             <span class="input-shell">
-              <input id="pitchInput" type="number" min="1" max="120" step="1" inputmode="decimal" value="30">
+              <input id="pitchInput" type="number" min="1" max="120" step="0.1" inputmode="decimal" value="30">
               <span class="unit">%</span>
             </span>
           </label>
@@ -149,15 +163,19 @@
             </span>
           </label>
           <label class="field field-wide">
-            <span class="field-label">Cumbrera más alta <span class="field-hint">editable</span></span>
+            <span class="field-label">Cumbrera principal <span class="field-hint">editable</span></span>
             <span class="input-shell">
               <input id="ridgeInput" type="number" min="0.5" max="30" step="0.05" inputmode="decimal" value="3.70">
               <span class="unit">m</span>
             </span>
           </label>
         </div>
-        <div class="derived-line" id="roofDerived">Pendiente 16,7° · Desarrollo máximo 4,00 m</div>
-        <p class="micro">La cumbrera se calcula con el agua de mayor desarrollo. Si la editas, se ajusta la pendiente de toda la techumbre.</p>
+        <div class="derived-line" id="roofDerived">Principal · Pendiente 16,7° · Desarrollo 4,00 m</div>
+        <button class="btn btn-auto" id="autoPitchesBtn" type="button" disabled>
+          <svg class="icon"><use href="#i-auto"></use></svg>
+          <span>Igualar alturas de las secundarias</span>
+        </button>
+        <p class="micro">La cumbrera principal se calcula con la pendiente y el desarrollo de esa agua. Marca otra agua con la estrella de su ficha para cambiar la referencia. El botón ajusta las aguas conectadas para que sus uniones coincidan; las aguas sin conexión se informan.</p>
       </section>
 
       <section class="card card-pad">
@@ -363,6 +381,7 @@
               <tr>
                 <th>Agua</th>
                 <th class="num">Superficie</th>
+                <th class="num col-pitch">Pend.</th>
                 <th class="num">Planchas</th>
                 <th class="num">Largo máx.</th>
               </tr>
@@ -410,7 +429,7 @@
           <div class="view3d-empty" id="view3dEmpty">Sin aguas para mostrar</div>
         </div>
         <div class="view3d-foot">
-          <span id="viewHeights">Alero 2,50 m · Cumbrera 3,70 m</span>
+          <span id="viewHeights">Alero 2,50 m · Cumbrera máx. 3,70 m</span>
           <div class="view-toggles">
             <label class="check"><input type="checkbox" id="labels3d"> Etiquetas</label>
             <label class="check"><input type="checkbox" id="showSheets3d"> Planchas</label>
@@ -434,6 +453,9 @@
           <div class="pano-head">
             <span class="pano-color" id="panoColor"></span>
             <input id="panoName" class="pano-name" type="text" value="" aria-label="Nombre del agua" maxlength="40">
+            <button class="icon-btn principal-btn" id="panoPrincipalBtn" type="button" title="Marcar como agua principal" aria-label="Marcar como agua principal" aria-pressed="false">
+              <svg class="icon"><use href="#i-star"></use></svg>
+            </button>
             <button class="icon-btn danger" id="panoDelete" type="button" title="Eliminar agua" aria-label="Eliminar agua">
               <svg class="icon"><use href="#i-trash"></use></svg>
             </button>
@@ -473,6 +495,17 @@
               </label>
               <p class="micro">Hacia dónde baja el agua. Arrastra la flecha del dial para cambiarla.</p>
             </div>
+          </div>
+
+          <div class="pitch-block">
+            <label class="field">
+              <span class="field-label">Pendiente del agua <span class="field-hint" id="panoRoleHint">secundaria</span></span>
+              <span class="input-shell">
+                <input id="panoPitchInput" type="number" min="1" max="120" step="0.1" inputmode="decimal" value="30">
+                <span class="unit">%</span>
+              </span>
+            </label>
+            <p class="micro" id="panoPitchHint">Personaliza la pendiente de esta agua. Usa «Igualar alturas» en Cubierta para ajustar las secundarias conectadas.</p>
           </div>
 
           <div class="metric-grid">
@@ -537,7 +570,7 @@
       </section>
       <section>
         <h3>2. Ajusta aguas y alturas</h3>
-        <p>Selecciona un agua y arrastra sus vértices. La flecha del dial indica hacia dónde escurre el agua. La pendiente y la altura de alero son generales: con ellas se calcula la altura de cada cumbrera y el largo real de las planchas. También puedes editar la cumbrera más alta: la app ajusta la pendiente.</p>
+        <p>Selecciona un agua y arrastra sus vértices. La flecha del dial indica hacia dónde escurre el agua. La altura de alero es general y cada agua tiene su propia pendiente; también puedes editar la cumbrera principal. Marca un agua con la estrella para usarla como referencia y pulsa <strong>Igualar alturas de las secundarias</strong> para calcular las pendientes de las aguas conectadas y hacer coincidir sus uniones.</p>
       </section>
       <section>
         <h3>3. Configura la plancha</h3>
@@ -549,7 +582,8 @@
       </section>
       <div class="method-box">
         <h3>Cómo se calcula</h3>
-        <p>Cada agua se divide en franjas paralelas al escurrimiento, separadas por el ancho útil. Para cada franja se mide el recorrido real hasta la cumbrera, limatesa o limahoya y se suma un margen de corte. El largo se redondea hacia arriba al múltiplo configurado. Si supera el largo máximo, se divide en tramos con traslape longitudinal.</p>
+        <p>Cada agua se divide en franjas paralelas al escurrimiento, separadas por el ancho útil. Para cada franja se mide el recorrido real hasta la cumbrera, limatesa o limahoya y se suma un margen de corte. El largo se redondea hacia arriba al múltiplo configurado. Si supera el largo máximo, se divide en tramos con traslape longitudinal. El largo de cada franja usa la pendiente propia del agua.</p>
+        <p>El auto-ajuste de pendientes recorre las aguas conectadas desde el agua principal y calcula la pendiente de cada secundaria para igualar las alturas en los extremos de su unión. Si una unión no se puede igualar con una pendiente constante, o un agua no está conectada, se informa en Revisión.</p>
         <p>El cálculo es conservador: no reutiliza recortes entre franjas. No incluye estructura, costaneras, fijaciones, aislación, canaletas ni cumbreras como material (solo informa su longitud).</p>
       </div>
       <div class="shortcut-box">

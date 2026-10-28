@@ -175,11 +175,184 @@
     return unions;
   }
 
+  function panoPitch(pano, roof) {
+    const value = Number(pano && pano.pitch);
+    if (Number.isFinite(value)) return G.clamp(value, 1, 120);
+    return Math.max(0, Number(roof.pitch) || 0);
+  }
+
+  /**
+   * Calcula nuevas pendientes para las aguas secundarias conectadas.
+   * Recorre desde el agua principal por las uniones compartidas; en cada paso
+   * resuelve por mínimos cuadrados la pendiente que mejor iguala las alturas
+   * en los extremos de la unión con el agua ya ajustada. No modifica el roof.
+   */
+  function autoAlignPitches(roof, principalId) {
+    const panos = (roof && roof.panos) || [];
+    if (panos.length < 2) {
+      return { changes: [], skipped: [], principalId: null };
+    }
+    const eaveHeight = Math.max(0, Number(roof.eaveHeight) || 0);
+    const principal =
+      panos.find((pano) => pano.id === principalId) ||
+      panos.reduce(
+        (best, pano) => (G.area(pano.points) > G.area(best.points) ? pano : best),
+        panos[0]
+      );
+
+    const pitches = new Map();
+    const metricsById = new Map();
+    for (const pano of panos) {
+      const pitch = panoPitch(pano, roof);
+      pitches.set(pano.id, pitch);
+      metricsById.set(pano.id, G.slopeMetrics(pano.points, pano.direction, pitch, eaveHeight));
+    }
+
+    const items = panos.map((pano) => ({ pano, metrics: metricsById.get(pano.id) }));
+    const unions = detectUnions(items);
+    const adjacency = new Map(panos.map((pano) => [pano.id, []]));
+    for (const union of unions) {
+      if (!['ridge', 'hip', 'valley'].includes(union.kind)) continue;
+      adjacency.get(union.panoA.id).push({ otherId: union.panoB.id, union });
+      adjacency.get(union.panoB.id).push({ otherId: union.panoA.id, union });
+    }
+
+    const visited = new Set([principal.id]);
+    const queue = [principal.id];
+    const changes = [];
+    const skipped = [];
+
+    while (queue.length) {
+      const parentId = queue.shift();
+      const parentMetrics = metricsById.get(parentId);
+      const groups = new Map();
+      for (const edge of adjacency.get(parentId) || []) {
+        if (visited.has(edge.otherId)) continue;
+        if (!groups.has(edge.otherId)) groups.set(edge.otherId, []);
+        groups.get(edge.otherId).push(edge.union);
+      }
+      const orderedGroups = [...groups.entries()].sort(
+        (a, b) =>
+          b[1].reduce((sum, union) => sum + union.length, 0) -
+          a[1].reduce((sum, union) => sum + union.length, 0)
+      );
+
+      for (const [childId, sharedUnions] of orderedGroups) {
+        if (visited.has(childId)) continue;
+        const child = panos.find((pano) => pano.id === childId);
+        if (!child) continue;
+        const childMetrics = metricsById.get(childId);
+        const points = [];
+        const seenPoints = new Set();
+        for (const union of sharedUnions) {
+          for (const point of [union.a, union.b]) {
+            const key = `${G.round(point.x, 5)},${G.round(point.y, 5)}`;
+            if (seenPoints.has(key)) continue;
+            seenPoints.add(key);
+            points.push(point);
+          }
+        }
+        if (!points.length) continue;
+
+        const samples = points.map((point) => ({
+          point,
+          leverage: Math.max(
+            0,
+            childMetrics.sMax -
+              (point.x * childMetrics.d.x + point.y * childMetrics.d.y)
+          ),
+          target: G.pointHeight(point, parentMetrics),
+        }));
+        const denominator = samples.reduce(
+          (sum, sample) => sum + sample.leverage * sample.leverage,
+          0
+        );
+        const currentPitch = pitches.get(childId);
+        const currentMetrics = childMetrics;
+
+        if (denominator < 1e-9) {
+          const currentMismatch = samples.reduce(
+            (max, sample) =>
+              Math.max(
+                max,
+                Math.abs(G.pointHeight(sample.point, currentMetrics) - sample.target)
+              ),
+            0
+          );
+          if (currentMismatch > 0.02) {
+            skipped.push({
+              panoId: childId,
+              reason: 'La unión no permite corregir la altura con una pendiente.',
+            });
+          }
+          visited.add(childId);
+          queue.push(childId);
+          continue;
+        }
+
+        const numerator = samples.reduce(
+          (sum, sample) => sum + sample.leverage * (sample.target - eaveHeight),
+          0
+        );
+        const tan = G.clamp(numerator / denominator, 0.01, 1.2);
+        const pitch = G.round(tan * 100, 1);
+        const nextMetrics = G.slopeMetrics(
+          child.points,
+          child.direction,
+          pitch,
+          eaveHeight
+        );
+        const mismatch = samples.reduce(
+          (max, sample) =>
+            Math.max(
+              max,
+              Math.abs(G.pointHeight(sample.point, nextMetrics) - sample.target)
+            ),
+          0
+        );
+
+        if (Math.abs(pitch - currentPitch) > 0.05) {
+          changes.push({
+            panoId: childId,
+            oldPitch: currentPitch,
+            pitch,
+            parentId,
+            mismatch,
+          });
+          pitches.set(childId, pitch);
+          metricsById.set(childId, nextMetrics);
+        }
+        visited.add(childId);
+        queue.push(childId);
+      }
+    }
+
+    for (const pano of panos) {
+      if (!visited.has(pano.id)) {
+        skipped.push({
+          panoId: pano.id,
+          reason: 'No está conectada al agua principal por una unión válida.',
+        });
+      }
+    }
+
+    return {
+      changes,
+      skipped,
+      principalId: principal.id,
+    };
+  }
+
   function analyze(roof, sheetConfig) {
     const pitch = Math.max(0, Number(roof.pitch) || 0);
     const eaveHeight = Math.max(0, Number(roof.eaveHeight) || 0);
     const panos = (roof.panos || []).map((pano) => {
-      const metrics = G.slopeMetrics(pano.points, pano.direction, pitch, eaveHeight);
+      const metrics = G.slopeMetrics(
+        pano.points,
+        pano.direction,
+        panoPitch(pano, roof),
+        eaveHeight
+      );
       const layout = calculateLayout(pano.points, metrics, sheetConfig);
       return { pano, metrics, layout };
     });
@@ -291,5 +464,7 @@
     calculateLayout,
     splitLengths,
     detectUnions,
+    autoAlignPitches,
+    panoPitch,
   };
 })();

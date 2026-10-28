@@ -264,6 +264,12 @@ summary:focus-visible {
   transform: translateY(1px);
 }
 
+.btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn .icon {
   width: 15px;
   height: 15px;
@@ -591,6 +597,72 @@ input[type="number"] {
   font-size: 10px;
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
+}
+
+.principal-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--muted-strong);
+  font-size: 10px;
+}
+
+.principal-line .icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: #a3a89d;
+}
+
+.principal-line.has-principal {
+  background: var(--accent-wash);
+  border-color: #ecd0c5;
+}
+
+.principal-line.has-principal .icon {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.principal-line span {
+  flex: none;
+}
+
+.principal-line strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-auto {
+  width: 100%;
+  min-height: 36px;
+  justify-content: center;
+  margin-top: 10px;
+  border-color: #ecc9bd;
+  background: var(--accent-wash);
+  color: var(--accent-deep);
+  font-size: 11px;
+}
+
+.btn-auto:hover {
+  border-color: #dfae9e;
+  background: var(--accent-soft);
+}
+
+.btn-auto .icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* ---------- Resultados ---------- */
@@ -1241,6 +1313,13 @@ input[type="number"] {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
 }
 
+.row-star {
+  flex: none;
+  color: var(--accent);
+  font-size: 10px;
+  line-height: 1;
+}
+
 .data-table tfoot td {
   padding: 9px 6px;
   border-top: 1px solid var(--line-strong);
@@ -1450,6 +1529,26 @@ input[type="number"] {
   margin-bottom: 12px;
 }
 
+.principal-btn {
+  color: #a3a89d;
+}
+
+.principal-btn:hover {
+  background: var(--accent-wash);
+  color: var(--accent-deep);
+}
+
+.principal-btn.is-principal {
+  border-color: #ecc9bd;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.principal-btn.is-principal .icon {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
 .pano-color {
   width: 10px;
   height: 10px;
@@ -1565,6 +1664,23 @@ input[type="number"] {
 .direction-fields .micro {
   margin-top: 5px;
   font-size: 9px;
+}
+
+.pitch-block {
+  margin-bottom: 12px;
+}
+
+.pitch-block .micro {
+  margin-top: 5px;
+  font-size: 9px;
+}
+
+.pitch-block .field-hint {
+  color: var(--muted);
+}
+
+.pitch-block .field-hint.is-principal {
+  color: var(--accent-deep);
 }
 
 .metric-grid {
@@ -2297,6 +2413,10 @@ input[type="number"] {
 }
 
 @media (max-width: 520px) {
+  .col-pitch {
+    display: none;
+  }
+
   .app-grid {
     padding: 10px;
     gap: 12px;

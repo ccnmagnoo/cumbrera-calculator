@@ -134,6 +134,130 @@ test('techumbre en L: limahoyas, cumbreras y alturas coincidentes', () => {
   assert.ok(mainSouth.metrics.areaPlan > 0);
 });
 
+test('cada agua puede tener su propia pendiente', () => {
+  const roof = roofFrom('dosAguas');
+  roof.panos[0].pitch = 40;
+  roof.panos[1].pitch = 20;
+  const result = C.analyze(roof, SHEET);
+  assert.equal(result.panos[0].metrics.pitch, 40);
+  assert.equal(result.panos[1].metrics.pitch, 20);
+  assert.ok(Math.abs(result.panos[0].metrics.maxHeight - 3.7) < 1e-9);
+  assert.ok(Math.abs(result.panos[1].metrics.maxHeight - 3.1) < 1e-9);
+  assert.ok(result.unions[0].mismatch > 0.5);
+  assert.ok(result.warnings.some((warning) => warning.text.includes('alturas')));
+});
+
+test('auto-ajuste: iguala la cumbrera secundaria con la principal', () => {
+  const roof = {
+    pitch: 30,
+    eaveHeight: 2.5,
+    panos: [
+      {
+        id: 'n',
+        name: 'Norte',
+        color: '#6f8b73',
+        direction: 0,
+        pitch: 40,
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+          { x: 10, y: 3 },
+          { x: 0, y: 3 },
+        ],
+      },
+      {
+        id: 's',
+        name: 'Sur',
+        color: '#c2634a',
+        direction: 180,
+        pitch: 30,
+        points: [
+          { x: 0, y: 3 },
+          { x: 10, y: 3 },
+          { x: 10, y: 8 },
+          { x: 0, y: 8 },
+        ],
+      },
+    ],
+  };
+  const result = C.autoAlignPitches(roof, 'n');
+  assert.equal(result.changes.length, 1);
+  assert.equal(result.changes[0].panoId, 's');
+  assert.ok(Math.abs(result.changes[0].pitch - 24) < 0.11);
+  assert.ok(result.changes[0].mismatch < 0.02);
+  assert.equal(result.skipped.length, 0);
+  assert.equal(roof.panos[1].pitch, 30, 'la función no debe mutar el roof');
+
+  roof.panos[1].pitch = result.changes[0].pitch;
+  const applied = C.analyze(roof, SHEET);
+  assert.equal(applied.warnings.length, 0);
+  assert.ok(
+    Math.abs(
+      applied.panos[0].metrics.maxHeight - applied.panos[1].metrics.maxHeight
+    ) < 0.02
+  );
+  assert.ok(applied.unions[0].mismatch < 0.02);
+});
+
+test('auto-ajuste: propaga la pendiente principal por las aguas conectadas', () => {
+  const roof = roofFrom('lConLimahoya');
+  roof.panos.forEach((pano) => {
+    pano.pitch = 30;
+  });
+  roof.panos[0].pitch = 40;
+  const result = C.autoAlignPitches(roof, 'p0');
+  assert.equal(result.changes.length, 3);
+  assert.equal(result.skipped.length, 0);
+  for (const change of result.changes) {
+    assert.ok(Math.abs(change.pitch - 40) < 0.11);
+    roof.panos.find((pano) => pano.id === change.panoId).pitch = change.pitch;
+  }
+  const applied = C.analyze(roof, SHEET);
+  assert.equal(applied.warnings.length, 0);
+  for (const union of applied.unions) {
+    assert.ok(union.mismatch < 0.02);
+  }
+});
+
+test('auto-ajuste: informa aguas sin conexión al agua principal', () => {
+  const roof = {
+    pitch: 30,
+    eaveHeight: 2.5,
+    panos: [
+      {
+        id: 'a',
+        name: 'A',
+        color: '#c2634a',
+        direction: 180,
+        pitch: 30,
+        points: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+          { x: 4, y: 4 },
+          { x: 0, y: 4 },
+        ],
+      },
+      {
+        id: 'b',
+        name: 'B',
+        color: '#5f7d8c',
+        direction: 180,
+        pitch: 30,
+        points: [
+          { x: 8, y: 0 },
+          { x: 12, y: 0 },
+          { x: 12, y: 4 },
+          { x: 8, y: 4 },
+        ],
+      },
+    ],
+  };
+  const result = C.autoAlignPitches(roof, 'a');
+  assert.equal(result.changes.length, 0);
+  assert.equal(result.skipped.length, 1);
+  assert.equal(result.skipped[0].panoId, 'b');
+});
+
 test('un agua: 10 m de alero y 6 m de desarrollo exige dos tramos', () => {
   const one = analyze('unAgua');
   const pano = one.panos[0];

@@ -19,8 +19,8 @@ y visita `http://localhost:8080`.
 ## Cómo usarla
 
 1. **Elige una plantilla** o presiona **Dibujar agua** y haz clic en los vértices del paño. Cierra en el primer punto o con Enter.
-2. **Ajusta la cubierta**: pendiente, altura de alero y, si quieres, la altura de la cumbrera más alta. La pendiente y el alero son generales; la cumbrera editable ajusta la pendiente.
-3. **Ajusta cada agua**: selecciónala en el plano o en la tabla. Arrastra sus vértices y cambia la dirección de escurrimiento con el dial o el ángulo. Los vértices compartidos se mueven en todas las aguas conectadas.
+2. **Ajusta la cubierta**: pendiente y cumbrera del agua principal, y altura de alero. El agua principal es la referencia; puedes marcar otra con la estrella. La cumbrera principal editable ajusta la pendiente de esa agua.
+3. **Ajusta cada agua**: selecciónala en el plano o en la tabla. Arrastra sus vértices, cambia la dirección de escurrimiento con el dial y personaliza su pendiente. Los vértices compartidos se mueven en todas las aguas conectadas. Si cambias la pendiente principal, usa **Igualar alturas de las secundarias** para recalcular las aguas conectadas.
 4. **Configura la plancha**: tipo (zinc liso u ondulada), ancho total, traslape lateral, largo máximo, redondeo, traslape longitudinal y margen de corte.
 5. **Revisa los resultados** en el encabezado, en la tarjeta de resultados y en la tabla. La vista 3D permite comprobar la forma y las alturas. El botón **Exportar CSV** genera una lista lista para cotizar.
 
@@ -38,9 +38,19 @@ Atajos: `V` seleccionar, `P` dibujar, `Enter` cerrar el agua en dibujo, `Esc` ca
 
 Puedes editar cualquier plantilla arrastrando sus vértices. Las plantillas son puntos de partida; las medidas se ajustan en el plano y en el panel de cada agua.
 
+## Pendientes y agua principal
+
+Cada agua tiene su propia pendiente. Por defecto, la app elige como **agua principal** la de mayor superficie y le asigna la pendiente base; puedes cambiarla con la estrella que aparece en la ficha del agua. La principal es la referencia para la cumbrera y para el auto-ajuste.
+
+- La **pendiente principal** se edita en Cubierta o en la ficha del agua principal.
+- La **cumbrera principal** es la altura máxima de esa agua. La **cumbrera máxima** que muestra la vista 3D es el punto más alto de toda la techumbre, que podría ser otra agua si la personalizas.
+- El botón **Igualar alturas de las secundarias** recorre las aguas conectadas desde la principal, unión por unión, y calcula la pendiente de cada secundaria para igualar las alturas en los extremos de la unión. No cambia el agua principal.
+- Si un agua no está conectada a la principal, no se ajusta y se informa. Si una unión no se puede igualar con una pendiente constante, la app deja el mejor ajuste y muestra la diferencia en **Revisión**.
+- Las planchas y sus largos se calculan con la pendiente de cada agua.
+
 ## Cómo se calcula
 
-Cada agua se divide en franjas paralelas a su dirección de escurrimiento. El ancho de cada franja es el **ancho útil** de la plancha (ancho total menos traslape lateral).
+Cada agua se divide en franjas paralelas a su dirección de escurrimiento. El ancho de cada franja es el **ancho útil** de la plancha (ancho total menos traslape lateral). El largo de la franja usa la pendiente propia de esa agua.
 
 - El largo de cada franja se mide desde el alero hasta la cumbrera, limatesa o limahoya que la limita, sobre la pendiente real.
 - Se suma un margen de corte y se redondea hacia arriba al múltiplo configurado.
@@ -76,12 +86,12 @@ o directamente:
 node --test
 ```
 
-Las pruebas verifican áreas, plantillas, alturas, limahoyas, conteos de planchas y división de largos.
+Las pruebas verifican áreas, plantillas, alturas, limahoyas, pendientes por agua, auto-ajuste, conteos de planchas y división de largos.
 
 ## Supuestos y límites
 
 - Las medidas están en metros y el origen de la planta está arriba a la izquierda.
-- Todas las aguas comparten pendiente y altura de alero. La altura de cada cumbrera se deriva del desarrollo de cada agua.
+- La altura de alero es común. Cada agua tiene su propia pendiente, y la altura de cada cumbrera se deriva de su pendiente y su desarrollo. El agua principal es la referencia; las aguas sin conexión no se auto-ajustan.
 - Cada agua es un plano. La app no genera automáticamente una techumbre desde el contorno de la casa: el usuario define los paños (o parte de una plantilla).
 - No modela lucarnas, perforaciones, cambios de pendiente dentro de un paño, aleros escalonados ni encuentros con muros.
 - El resultado es una estimación de materiales; confirma medidas, traslapes y disponibilidad de largos con tu proveedor antes de comprar.

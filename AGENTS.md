@@ -19,7 +19,9 @@ Cumbrera is a dependency-free static web app: no framework, bundler, build, lint
 ## Domain conventions
 
 - All measurements are meters. Plan coordinates have the origin top-left with +y downward. Directions are compass degrees (0=N, 90=E) mapped as `{x: sin, y: -cos}`.
-- All panos share `roof.pitch` and `roof.eaveHeight`; each ridge height is derived from that pano's run. Editing "cumbrera más alta" back-solves the shared pitch.
+- Each pano has its own optional `pitch` (1–120%); `roof.eaveHeight` remains global. `roof.pitch` is the default/last principal pitch, used for new panos and templates; `roof.principalId` marks the reference water. The principal is inferred as the largest pano when absent. Editing "pendiente principal" or "cumbrera principal" changes only the principal and updates `roof.pitch`; new panos use that base.
+- `calc.autoAlignPitches()` is pure (does not mutate): it propagates from the principal through valid shared unions and solves each secondary pitch by least squares against the union endpoint heights. Disconnected panos and unions that cannot be equaled with one constant pitch are reported, not silently changed.
+- Per-pano `pitch`, `roof.principalId`, and the principal pitch are additive v1 state fields. `sanitizeRoof`/`sanitizePano` fill missing pitches from `roof.pitch` and infer the principal, so older saved designs still load.
 - Sheet config keys are `width`, `lateralOverlap`, `maxLength`, `lengthStep`, `longitudinalOverlap`, `endAllowance`. Useful width = `width - lateralOverlap`.
 - The calculation is deliberately conservative: one piece per strip (split when over max length), no offcut reuse. Do not "optimize" it; reported waste and the tests depend on this.
 - Template geometry is asserted exactly in `tests/calc.test.js` (areas and ridge/hip/valley lengths). Changing a template requires updating those expectations and the README.

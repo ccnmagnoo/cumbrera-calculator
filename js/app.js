@@ -131,6 +131,7 @@
     const ids = [
       'templateGrid', 'saveState', 'saveStateText', 'headerSheets', 'helpBtn', 'exportBtn', 'resetBtn',
       'pitchInput', 'pitchBadge', 'eaveInput', 'ridgeInput', 'roofDerived',
+      'principalLine', 'principalName', 'autoPitchesBtn',
       'sheetPreset', 'sheetBadge', 'sheetWidth', 'sheetOverlap', 'sheetMaxLength',
       'sheetStep', 'sheetLongOverlap', 'sheetMargin', 'sheetDerived',
       'statSheets', 'statLinear', 'statArea', 'statPurchased', 'statWaste',
@@ -142,7 +143,8 @@
       'panoTableBody', 'panoTableFoot', 'panoCountBadge', 'unionRidge', 'unionHip',
       'unionValley', 'labels3d', 'showSheets3d', 'resetViewBtn', 'view3d', 'view3dWrap',
       'view3dEmpty', 'viewHeights', 'panoEmpty', 'panoEditor', 'panoColor', 'panoName',
-      'panoDelete', 'dialSvg', 'dialArrow', 'directionName', 'directionInput',
+      'panoDelete', 'panoPrincipalBtn', 'panoPitchInput', 'panoRoleHint', 'panoPitchHint',
+      'dialSvg', 'dialArrow', 'directionName', 'directionInput',
       'panoArea', 'panoRun', 'panoHeight', 'panoSheets', 'panoColumns', 'panoMaxPiece',
       'panoCutChips', 'panoCutsHint', 'vertexTable', 'warningsList', 'warningBadge',
       'helpDialog', 'helpClose', 'helpOk', 'methodBtn', 'toast',
@@ -327,7 +329,7 @@
     return s;
   }
 
-  function sanitizePano(raw, index, seenIds) {
+  function sanitizePano(raw, index, seenIds, defaultPitch) {
     if (!raw || typeof raw !== 'object') return null;
     const points = Array.isArray(raw.points)
       ? raw.points
@@ -345,12 +347,15 @@
     if (!Number.isFinite(direction)) direction = 180;
     direction = ((direction % 360) + 360) % 360;
     const name = String(raw.name || `Agua ${index + 1}`).slice(0, 40).trim() || `Agua ${index + 1}`;
-    return { id, name, color, direction, points };
+    const pitch = Number.isFinite(Number(raw.pitch))
+      ? clamp(Number(raw.pitch), 1, 120)
+      : defaultPitch;
+    return { id, name, color, direction, points, pitch };
   }
 
   function sanitizeRoof(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const pitch = clamp(Number.isFinite(Number(raw.pitch)) ? Number(raw.pitch) : 30, 1, 120);
+    let pitch = clamp(Number.isFinite(Number(raw.pitch)) ? Number(raw.pitch) : 30, 1, 120);
     const eaveHeight = clamp(
       Number.isFinite(Number(raw.eaveHeight)) ? Number(raw.eaveHeight) : 2.5,
       0.5,
@@ -360,23 +365,38 @@
     const panos = Array.isArray(raw.panos)
       ? raw.panos
           .slice(0, 80)
-          .map((p, index) => sanitizePano(p, index, seen))
+          .map((p, index) => sanitizePano(p, index, seen, pitch))
           .filter(Boolean)
       : [];
-    return { pitch, eaveHeight, panos };
+    let principalId = null;
+    if (panos.length) {
+      const requested = panos.find((pano) => pano.id === raw.principalId);
+      const principal =
+        requested ||
+        panos.reduce(
+          (best, pano) => (G.area(pano.points) > G.area(best.points) ? pano : best),
+          panos[0]
+        );
+      principalId = principal.id;
+      pitch = principal.pitch;
+    }
+    return { pitch, eaveHeight, principalId, panos };
   }
 
   /* ------------------------------------------------------------------ */
   /* Acciones                                                           */
   /* ------------------------------------------------------------------ */
 
-  function makePano(raw) {
+  function makePano(raw, pitch) {
     return {
       id: uid(),
       name: raw.name,
       color: raw.color,
       direction: raw.direction,
       points: raw.points.map((p) => ({ x: p.x, y: p.y })),
+      pitch: Number.isFinite(Number(pitch))
+        ? clamp(Number(pitch), 1, 120)
+        : clamp(Number(state.roof.pitch) || 30, 1, 120),
     };
   }
 
@@ -389,12 +409,54 @@
     return analysis.panos.find((item) => item.pano.id === state.ui.selectedId) || null;
   }
 
+  function ensurePrincipal() {
+    for (const pano of state.roof.panos) {
+      if (!Number.isFinite(Number(pano.pitch))) {
+        pano.pitch = clamp(Number(state.roof.pitch) || 30, 1, 120);
+      }
+    }
+    if (!state.roof.panos.length) {
+      state.roof.principalId = null;
+      return null;
+    }
+    let principal = state.roof.panos.find((pano) => pano.id === state.roof.principalId);
+    if (!principal) {
+      principal = state.roof.panos.reduce(
+        (best, pano) => (G.area(pano.points) > G.area(best.points) ? pano : best),
+        state.roof.panos[0]
+      );
+      state.roof.principalId = principal.id;
+    }
+    state.roof.pitch = clamp(Number(principal.pitch) || 30, 1, 120);
+    return principal;
+  }
+
+  function principalPano() {
+    const id = state.roof.principalId;
+    return state.roof.panos.find((pano) => pano.id === id) || null;
+  }
+
+  function principalItem() {
+    if (!analysis) return null;
+    const id = state.roof.principalId;
+    return analysis.panos.find((item) => item.pano.id === id) || null;
+  }
+
+  function pitchLabel(value) {
+    const rounded = G.round(Number(value) || 0, 1);
+    return `${fmt(rounded, Number.isInteger(rounded) ? 0 : 1)}%`;
+  }
+
   function applyTemplate(id, options) {
     const opts = options || {};
     const template = TPL.byId(id);
     if (!template) return;
     if (opts.history !== false) pushHistory();
-    state.roof.panos = template.build().map(makePano);
+    const pitch = state.roof.pitch;
+    const panos = template.build().map((pano) => makePano(pano, pitch));
+    state.roof.panos = panos;
+    state.roof.principalId = null;
+    ensurePrincipal();
     state.ui.selectedId = state.roof.panos[0] ? state.roof.panos[0].id : null;
     state.ui.tool = 'select';
     state.ui.draw = null;
@@ -424,7 +486,11 @@
       return;
     }
     pushHistory();
-    state.roof = { ...DEFAULT_ROOF, panos: TPL.byId('cuatroAguas').build().map(makePano) };
+    const panos = TPL.byId('cuatroAguas')
+      .build()
+      .map((pano) => makePano(pano, DEFAULT_ROOF.pitch));
+    state.roof = { ...DEFAULT_ROOF, principalId: null, panos };
+    ensurePrincipal();
     state.sheet = { ...DEFAULT_SHEET };
     state.ui.selectedId = state.roof.panos[0] ? state.roof.panos[0].id : null;
     state.ui.tool = 'select';
@@ -445,7 +511,9 @@
     if (!pano) return;
     const index = state.roof.panos.indexOf(pano);
     pushHistory();
+    const wasPrincipal = state.roof.principalId === pano.id;
     state.roof.panos.splice(index, 1);
+    if (wasPrincipal) state.roof.principalId = null;
     const next = state.roof.panos[Math.min(index, state.roof.panos.length - 1)] || null;
     state.ui.selectedId = next ? next.id : null;
     render();
@@ -462,6 +530,55 @@
     state.ui.tool = 'select';
     state.ui.selectedId = id;
     render();
+  }
+
+  function setSelectedAsPrincipal() {
+    const pano = selectedPano();
+    if (!pano) return;
+    if (state.roof.principalId === pano.id) {
+      toast('Esta agua ya es la principal');
+      return;
+    }
+    pushHistory();
+    state.roof.principalId = pano.id;
+    state.roof.pitch = clamp(Number(pano.pitch) || 30, 1, 120);
+    render();
+    toast(`Agua principal: ${pano.name}`);
+  }
+
+  function autoAlignSecondaryPitches() {
+    const principal = ensurePrincipal();
+    if (!principal || state.roof.panos.length < 2) {
+      toast('Necesitas al menos dos aguas para igualar alturas', 'error');
+      return;
+    }
+    const result = CALC.autoAlignPitches(state.roof, principal.id);
+    if (!result.changes.length) {
+      const heightIssues = analysis.warnings.some((warning) =>
+        warning.text.includes('alturas no coinciden')
+      );
+      if (result.skipped.length) {
+        toast('No hay aguas conectadas que se puedan ajustar');
+      } else if (heightIssues) {
+        toast('No existe una pendiente constante que iguale todas las uniones');
+      } else {
+        toast('Las pendientes ya coinciden');
+      }
+      return;
+    }
+    pushHistory();
+    for (const change of result.changes) {
+      const pano = state.roof.panos.find((item) => item.id === change.panoId);
+      if (pano) pano.pitch = change.pitch;
+    }
+    render();
+    const total = result.changes.length;
+    const skipped = result.skipped.length;
+    const approximated = result.changes.filter((change) => change.mismatch > 0.03).length;
+    let message = `Pendientes ajustadas en ${total} ${total === 1 ? 'agua' : 'aguas'}`;
+    if (skipped) message += ` · ${skipped} sin ajuste`;
+    if (approximated) message += ' · revisa las uniones';
+    toast(message);
   }
 
   function nextColor() {
@@ -549,8 +666,10 @@
       color: nextColor(),
       direction,
       points,
+      pitch: clamp(Number(state.roof.pitch) || 30, 1, 120),
     };
     state.roof.panos.push(pano);
+    ensurePrincipal();
     state.ui.selectedId = pano.id;
     state.ui.draw = null;
     state.ui.tool = 'select';
@@ -569,6 +688,7 @@
   /* ------------------------------------------------------------------ */
 
   function render() {
+    ensurePrincipal();
     state.sheet = sanitizeSheet(state.sheet);
     analysis = CALC.analyze(state.roof, state.sheet);
     if (state.ui.selectedId && !state.roof.panos.some((p) => p.id === state.ui.selectedId)) {
@@ -665,7 +785,7 @@
     if (!panos.length) {
       const row = document.createElement('tr');
       const cell = document.createElement('td');
-      cell.colSpan = 4;
+      cell.colSpan = 5;
       cell.className = 'table-empty';
       cell.textContent = 'Sin aguas. Dibuja una o elige una plantilla.';
       row.appendChild(cell);
@@ -694,17 +814,28 @@
       name.className = 'pano-name-cell';
       name.textContent = item.pano.name;
       nameWrap.append(dot, name);
+      if (item.pano.id === state.roof.principalId) {
+        const star = document.createElement('span');
+        star.className = 'row-star';
+        star.title = 'Agua principal';
+        star.setAttribute('aria-label', 'Agua principal');
+        star.textContent = '★';
+        nameWrap.appendChild(star);
+      }
       nameCell.appendChild(nameWrap);
       const area = document.createElement('td');
       area.className = 'num';
       area.textContent = fmtArea(item.metrics.areaRoof, 1);
+      const pitchCell = document.createElement('td');
+      pitchCell.className = 'num col-pitch';
+      pitchCell.textContent = pitchLabel(item.metrics.pitch);
       const sheets = document.createElement('td');
       sheets.className = 'num';
       sheets.textContent = fmt(item.layout.sheetCount, 0);
       const maxPiece = document.createElement('td');
       maxPiece.className = 'num';
       maxPiece.textContent = item.layout.maxPiece ? fmtM(item.layout.maxPiece, 2) : '—';
-      row.append(nameCell, area, sheets, maxPiece);
+      row.append(nameCell, area, pitchCell, sheets, maxPiece);
       row.addEventListener('click', () => selectPano(item.pano.id));
       row.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -721,6 +852,9 @@
     const totalArea = document.createElement('td');
     totalArea.className = 'num';
     totalArea.textContent = fmtArea(analysis.totals.roofArea, 1);
+    const totalPitch = document.createElement('td');
+    totalPitch.className = 'num col-pitch';
+    totalPitch.textContent = '—';
     const totalSheets = document.createElement('td');
     totalSheets.className = 'num';
     totalSheets.textContent = fmt(analysis.totals.sheets, 0);
@@ -728,7 +862,7 @@
     totalMax.className = 'num';
     const maxPieces = analysis.panos.map((p) => p.layout.maxPiece).filter((v) => v > 0);
     totalMax.textContent = maxPieces.length ? fmtM(Math.max(...maxPieces), 2) : '—';
-    totalRow.append(totalLabel, totalArea, totalSheets, totalMax);
+    totalRow.append(totalLabel, totalArea, totalPitch, totalSheets, totalMax);
     foot.appendChild(totalRow);
   }
 
@@ -792,11 +926,25 @@
     els.panoEmpty.hidden = true;
     els.panoEditor.hidden = false;
     const pano = item.pano;
+    const isPrincipal = pano.id === state.roof.principalId;
     els.panoColor.style.background = pano.color;
     if (document.activeElement !== els.panoName) els.panoName.value = pano.name;
     if (document.activeElement !== els.directionInput) {
       els.directionInput.value = String(Math.round(pano.direction));
     }
+    if (document.activeElement !== els.panoPitchInput) {
+      els.panoPitchInput.value = roundInput(item.metrics.pitch, 1);
+    }
+    els.panoRoleHint.textContent = isPrincipal ? 'principal' : 'secundaria';
+    els.panoRoleHint.classList.toggle('is-principal', isPrincipal);
+    els.panoPitchHint.textContent = isPrincipal
+      ? 'Esta agua es la referencia de alturas. Puedes ajustar su pendiente o editar la cumbrera principal.'
+      : 'Personaliza su pendiente o usa «Igualar alturas» en Cubierta para coincidir con el agua principal.';
+    els.panoPrincipalBtn.classList.toggle('is-principal', isPrincipal);
+    els.panoPrincipalBtn.setAttribute('aria-pressed', String(isPrincipal));
+    const principalTitle = isPrincipal ? 'Agua principal' : 'Marcar como agua principal';
+    els.panoPrincipalBtn.title = principalTitle;
+    els.panoPrincipalBtn.setAttribute('aria-label', principalTitle);
     els.directionName.textContent = G.directionLabel(pano.direction);
     els.dialArrow.setAttribute('transform', `rotate(${pano.direction} 46 46)`);
     els.panoArea.textContent = fmtArea(item.metrics.areaRoof, 1);
@@ -907,25 +1055,35 @@
   }
 
   function syncInputs() {
-    const pitch = state.roof.pitch;
+    const principal = principalPano();
+    const principalInfo = principalItem();
+    const pitch = principal ? Number(principal.pitch) || 30 : state.roof.pitch;
     const eave = state.roof.eaveHeight;
     setInputValue(els.pitchInput, roundInput(pitch, 1));
     setInputValue(els.eaveInput, eave.toFixed(2));
-    if (analysis.panos.length && analysis.maxRun > 0.01) {
+    if (principalInfo && principalInfo.metrics.run > 0.01) {
       els.ridgeInput.disabled = false;
       els.ridgeInput.removeAttribute('title');
-      setInputValue(els.ridgeInput, analysis.maxHeight.toFixed(2));
+      setInputValue(els.ridgeInput, principalInfo.metrics.maxHeight.toFixed(2));
+      const angle = (Math.atan(pitch / 100) * 180) / Math.PI;
+      els.roofDerived.textContent = `Principal ${planLabel(principal.name)} · ${fmt(angle, 1)}° · Desarrollo ${fmtM(principalInfo.metrics.run, 2)}`;
+      els.principalName.textContent = planLabel(principal.name);
     } else {
       els.ridgeInput.disabled = true;
       els.ridgeInput.value = '';
       els.ridgeInput.title = 'Agrega un agua para calcular la cumbrera';
+      els.roofDerived.textContent = principal
+        ? 'Agua principal sin desarrollo'
+        : 'Sin agua principal';
+      els.principalName.textContent = principal ? planLabel(principal.name) : '—';
     }
-
-    els.pitchBadge.textContent = `${fmt(pitch, 0)}%`;
-    const angle = (Math.atan(pitch / 100) * 180) / Math.PI;
-    els.roofDerived.textContent = analysis.maxRun > 0.01
-      ? `Pendiente ${fmt(angle, 1)}° · Desarrollo máximo ${fmtM(analysis.maxRun, 2)}`
-      : `Pendiente ${fmt(angle, 1)}° · Sin aguas dibujadas`;
+    els.principalLine.classList.toggle('has-principal', !!principal);
+    els.pitchBadge.textContent = pitchLabel(pitch);
+    els.autoPitchesBtn.disabled = !principal || state.roof.panos.length < 2;
+    els.autoPitchesBtn.title =
+      !principal || state.roof.panos.length < 2
+        ? 'Agrega al menos dos aguas para usar el auto-ajuste'
+        : `Calcula las pendientes de las secundarias conectadas a «${principal.name}»`;
 
     setInputValue(els.sheetWidth, state.sheet.width.toFixed(2));
     setInputValue(els.sheetOverlap, state.sheet.lateralOverlap.toFixed(2));
@@ -940,15 +1098,19 @@
     els.labels3d.checked = state.ui.labels3d;
     els.showSheets3d.checked = state.ui.sheets3d;
     if (analysis.panos.length) {
-      els.viewHeights.textContent = `Alero ${fmtM(eave, 2)} · Cumbrera ${fmtM(analysis.maxHeight, 2)}`;
+      els.viewHeights.textContent = `Alero ${fmtM(eave, 2)} · Cumbrera máx. ${fmtM(analysis.maxHeight, 2)}`;
     } else {
       els.viewHeights.textContent = 'Sin aguas';
     }
 
-    if (selectedItem()) {
-      if (document.activeElement !== els.panoName) els.panoName.value = selectedPano().name;
+    const selected = selectedItem();
+    if (selected) {
+      if (document.activeElement !== els.panoName) els.panoName.value = selected.pano.name;
       if (document.activeElement !== els.directionInput) {
-        els.directionInput.value = String(Math.round(selectedPano().direction));
+        els.directionInput.value = String(Math.round(selected.pano.direction));
+      }
+      if (document.activeElement !== els.panoPitchInput) {
+        els.panoPitchInput.value = roundInput(selected.metrics.pitch, 1);
       }
     }
   }
@@ -1208,7 +1370,8 @@
         stroke: '#fffdf9',
         'stroke-width': halo,
       });
-      text.textContent = planLabel(item.pano.name);
+      const prefix = item.pano.id === state.roof.principalId ? '★ ' : '';
+      text.textContent = `${prefix}${planLabel(item.pano.name)}`;
       els.labelLayer.appendChild(text);
 
       const selected = item.pano.id === state.ui.selectedId;
@@ -2099,7 +2262,7 @@
         ctx.fillText(text, left + padX, topY + height / 2 + 0.5);
         return { left, top: topY, width, height };
       };
-      makePill(`Cumbrera ${fmtM(highest.z, 2)}`, top.x + 10, top.y - 10, {
+      makePill(`Cumbrera máx. ${fmtM(highest.z, 2)}`, top.x + 10, top.y - 10, {
         color: '#8d4a33',
         border: 'rgba(141, 74, 51, 0.22)',
       });
@@ -2120,8 +2283,12 @@
       for (const label of labels) {
         const pano = label.item.pano;
         const selected = pano.id === state.ui.selectedId;
+        const displayName =
+          pano.id === state.roof.principalId
+            ? `★ ${planLabel(pano.name)}`
+            : planLabel(pano.name);
         ctx.font = '600 9.5px "Segoe UI", system-ui, sans-serif';
-        const textWidth = ctx.measureText(pano.name).width;
+        const textWidth = ctx.measureText(displayName).width;
         const padX = 6;
         const height = 17;
         const dot = 5;
@@ -2141,7 +2308,7 @@
         ctx.fill();
         ctx.fillStyle = '#242a23';
         ctx.textBaseline = 'middle';
-        ctx.fillText(pano.name, left + padX + dot + gap, topY + height / 2 + 0.5);
+        ctx.fillText(displayName, left + padX + dot + gap, topY + height / 2 + 0.5);
       }
     }
   }
@@ -2215,12 +2382,19 @@
       return;
     }
     const t = analysis.totals;
+    const principal = principalPano();
+    const principalInfo = principalItem();
     const rows = [];
     rows.push(['Cumbrera — cálculo de planchas', '']);
     rows.push(['Fecha', new Date().toLocaleDateString('es-CL')]);
-    rows.push(['Pendiente (%)', fmt(state.roof.pitch, 0)]);
+    rows.push(['Agua principal', principal ? principal.name : '—']);
+    rows.push(['Pendiente principal (%)', principal ? fmt(principal.pitch, 1) : fmt(state.roof.pitch, 1)]);
     rows.push(['Altura de alero (m)', fmt(state.roof.eaveHeight, 2)]);
-    rows.push(['Cumbrera más alta (m)', fmt(analysis.maxHeight, 2)]);
+    rows.push([
+      'Cumbrera principal (m)',
+      principalInfo ? fmt(principalInfo.metrics.maxHeight, 2) : '—',
+    ]);
+    rows.push(['Cumbrera máxima (m)', fmt(analysis.maxHeight, 2)]);
     rows.push([`Plancha ${fmt(state.sheet.width, 2)} m (útil ${fmt(usableWidth(), 2)} m)`, '']);
     rows.push(['Traslape lateral (m)', fmt(state.sheet.lateralOverlap, 2)]);
     rows.push(['Largo máximo (m)', fmt(state.sheet.maxLength, 2)]);
@@ -2229,14 +2403,16 @@
     rows.push(['Margen de corte (m)', fmt(state.sheet.endAllowance, 2)]);
     rows.push([]);
     rows.push([
-      'Agua', 'Dirección', 'Superficie (m²)', 'Columnas', 'Planchas',
-      'Metros lineales (m)', 'Largo máximo (m)',
+      'Agua', 'Principal', 'Dirección', 'Superficie (m²)', 'Pendiente (%)',
+      'Columnas', 'Planchas', 'Metros lineales (m)', 'Largo máximo (m)',
     ]);
     for (const item of analysis.panos) {
       rows.push([
         item.pano.name,
+        item.pano.id === state.roof.principalId ? 'Sí' : '',
         G.directionLabel(item.pano.direction),
         fmt(item.metrics.areaRoof, 1),
+        fmt(item.metrics.pitch, 1),
         item.layout.columns,
         item.layout.sheetCount,
         fmt(item.layout.linear, 1),
@@ -2246,7 +2422,9 @@
     rows.push([
       'Total',
       '',
+      '',
       fmt(t.roofArea, 1),
+      '',
       '',
       t.sheets,
       fmt(t.linear, 1),
@@ -2357,7 +2535,20 @@
     bindNumber(
       els.pitchInput,
       (value) => {
-        state.roof.pitch = value;
+        const rounded = G.round(value, 1);
+        const principal = principalPano();
+        if (principal) principal.pitch = rounded;
+        state.roof.pitch = rounded;
+      },
+      { min: 1, max: 120 }
+    );
+    bindNumber(
+      els.panoPitchInput,
+      (value) => {
+        const pano = selectedPano();
+        if (!pano) return;
+        pano.pitch = G.round(value, 1);
+        if (pano.id === state.roof.principalId) state.roof.pitch = pano.pitch;
       },
       { min: 1, max: 120 }
     );
@@ -2371,9 +2562,19 @@
     bindNumber(
       els.ridgeInput,
       (value) => {
-        if (!analysis || analysis.maxRun < 0.01) return;
+        const principal = principalItem();
+        if (!principal || principal.metrics.run < 0.01) return;
         const target = Math.max(state.roof.eaveHeight + 0.05, value);
-        state.roof.pitch = clamp(((target - state.roof.eaveHeight) / analysis.maxRun) * 100, 1, 120);
+        const pitch = G.round(
+          clamp(
+            ((target - state.roof.eaveHeight) / principal.metrics.run) * 100,
+            1,
+            120
+          ),
+          1
+        );
+        principal.pano.pitch = pitch;
+        state.roof.pitch = pitch;
       },
       { min: 0.5, max: 30 }
     );
@@ -2428,6 +2629,9 @@
       { min: 0, max: 360 }
     );
     bindNameInput();
+
+    els.panoPrincipalBtn.addEventListener('click', setSelectedAsPrincipal);
+    els.autoPitchesBtn.addEventListener('click', autoAlignSecondaryPitches);
 
     els.sheetPreset.addEventListener('change', () => {
       const id = els.sheetPreset.value;
@@ -2708,11 +2912,14 @@
 
     const restored = loadState();
     if (!restored) {
-      state.roof.panos = TPL.byId('cuatroAguas').build().map(makePano);
+      state.roof.panos = TPL.byId('cuatroAguas')
+        .build()
+        .map((pano) => makePano(pano, DEFAULT_ROOF.pitch));
       state.ui.selectedId = state.roof.panos[0] ? state.roof.panos[0].id : null;
     } else if (!state.ui.selectedId && state.roof.panos.length) {
       state.ui.selectedId = state.roof.panos[0].id;
     }
+    ensurePrincipal();
 
     els.view3d.setAttribute('role', 'img');
     els.view3d.setAttribute('aria-label', 'Vista 3D de la techumbre dibujada');
