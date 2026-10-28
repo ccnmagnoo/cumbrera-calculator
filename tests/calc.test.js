@@ -67,6 +67,58 @@ test('plantillas: superficies y alturas coherentes', () => {
   assert.equal(four.warnings.length, 0);
 });
 
+test('plantillas nuevas: tres aguas, pabellón y T', () => {
+  const three = analyze('tresAguas');
+  assert.ok(Math.abs(three.totals.planArea - 80) < 1e-9);
+  assert.ok(Math.abs(three.totals.byKind.ridge - 6) < 1e-9);
+  assert.ok(Math.abs(three.totals.byKind.hip - 2 * Math.hypot(4, 4)) < 1e-9);
+  assert.equal(three.totals.byKind.valley, 0);
+  assert.equal(three.warnings.length, 0);
+  for (const item of three.panos) {
+    assert.ok(Math.abs(item.metrics.maxHeight - 3.7) < 1e-9);
+  }
+
+  const pavilion = analyze('pabellon');
+  assert.ok(Math.abs(pavilion.totals.planArea - 64) < 1e-9);
+  assert.equal(pavilion.totals.byKind.ridge, 0);
+  assert.ok(Math.abs(pavilion.totals.byKind.hip - 4 * Math.hypot(4, 4)) < 1e-9);
+  assert.equal(pavilion.totals.byKind.valley, 0);
+  assert.equal(pavilion.warnings.length, 0);
+  for (const item of pavilion.panos) {
+    assert.ok(Math.abs(item.metrics.maxHeight - 3.7) < 1e-9);
+  }
+
+  const tee = analyze('tConLimahoya');
+  assert.ok(Math.abs(tee.totals.planArea - 148) < 1e-9);
+  assert.ok(Math.abs(tee.totals.byKind.ridge - 23) < 1e-9);
+  assert.ok(Math.abs(tee.totals.byKind.valley - 2 * Math.hypot(3, 3)) < 1e-9);
+  assert.equal(tee.totals.byKind.hip, 0);
+  assert.equal(tee.warnings.length, 0);
+  for (const union of tee.unions) {
+    assert.ok(union.mismatch < 1e-9, `desfase en unión ${union.kind}`);
+  }
+  const mainSouth = tee.panos.find((p) => p.pano.name === 'Principal sur');
+  assert.ok(G.isSimplePolygon(mainSouth.pano.points));
+  assert.ok(Math.abs(mainSouth.metrics.areaPlan - 47) < 1e-9);
+  assert.ok(Math.abs(mainSouth.metrics.maxHeight - 3.7) < 1e-9);
+});
+
+test('catálogo de plantillas: siete techumbres operativas', () => {
+  const ids = T.list.map((template) => template.id);
+  assert.deepEqual(ids, [
+    'unAgua',
+    'dosAguas',
+    'tresAguas',
+    'cuatroAguas',
+    'pabellon',
+    'lConLimahoya',
+    'tConLimahoya',
+  ]);
+  for (const id of ids) {
+    assert.ok(analyze(id).totals.sheets > 0, `${id} no genera planchas`);
+  }
+});
+
 test('techumbre en L: limahoyas, cumbreras y alturas coincidentes', () => {
   const l = analyze('lConLimahoya');
   assert.equal(l.totals.planArea, 132);

@@ -18,13 +18,25 @@ y visita `http://localhost:8080`.
 
 ## Cómo usarla
 
-1. **Elige una plantilla** (un agua, dos aguas, cuatro aguas o L con limahoya) o presiona **Dibujar agua** y haz clic en los vértices del paño. Cierra en el primer punto o con Enter.
+1. **Elige una plantilla** o presiona **Dibujar agua** y haz clic en los vértices del paño. Cierra en el primer punto o con Enter.
 2. **Ajusta la cubierta**: pendiente, altura de alero y, si quieres, la altura de la cumbrera más alta. La pendiente y el alero son generales; la cumbrera editable ajusta la pendiente.
 3. **Ajusta cada agua**: selecciónala en el plano o en la tabla. Arrastra sus vértices y cambia la dirección de escurrimiento con el dial o el ángulo. Los vértices compartidos se mueven en todas las aguas conectadas.
 4. **Configura la plancha**: tipo (zinc liso u ondulada), ancho total, traslape lateral, largo máximo, redondeo, traslape longitudinal y margen de corte.
 5. **Revisa los resultados** en el encabezado, en la tarjeta de resultados y en la tabla. La vista 3D permite comprobar la forma y las alturas. El botón **Exportar CSV** genera una lista lista para cotizar.
 
 Atajos: `V` seleccionar, `P` dibujar, `Enter` cerrar el agua en dibujo, `Esc` cancelar/deseleccionar, `Ctrl+Z` deshacer, `Ctrl+Shift+Z` rehacer, `Supr` eliminar el agua seleccionada. La rueda hace zoom en el plano; arrastra el fondo para moverlo.
+
+### Plantillas incluidas
+
+- **Un agua**: una pendiente.
+- **Dos aguas**: cumbrera central.
+- **Tres aguas**: limatesa en un extremo y gablete en el otro.
+- **Cuatro aguas**: cumbrera corta y cuatro limatesas.
+- **Pabellón**: cuatro aguas que llegan a una punta, sin cumbrera.
+- **L con limahoya**: dos cuerpos en ángulo recto con una limahoya.
+- **T con limahoya**: cuerpo principal con un ala central y dos limahoyas.
+
+Puedes editar cualquier plantilla arrastrando sus vértices. Las plantillas son puntos de partida; las medidas se ajustan en el plano y en el panel de cada agua.
 
 ## Cómo se calcula
 

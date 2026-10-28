@@ -64,6 +64,32 @@
       },
     },
     {
+      id: 'tresAguas',
+      name: 'Tres aguas',
+      description: 'Limatesa y gablete',
+      build() {
+        return [
+          pano('Norte', 0, COLORS[1], [
+            pt(0, 0),
+            pt(10, 0),
+            pt(6, 4),
+            pt(0, 4),
+          ]),
+          pano('Oriente', 90, COLORS[2], [
+            pt(10, 0),
+            pt(10, 8),
+            pt(6, 4),
+          ]),
+          pano('Sur', 180, COLORS[0], [
+            pt(0, 8),
+            pt(10, 8),
+            pt(6, 4),
+            pt(0, 4),
+          ]),
+        ];
+      },
+    },
+    {
       id: 'cuatroAguas',
       name: 'Cuatro aguas',
       description: 'Con limatesas',
@@ -84,6 +110,35 @@
             pt(0, 8),
             pt(10, 8),
             pt(6, 4),
+            pt(4, 4),
+          ]),
+          pano('Poniente', 270, COLORS[3], [
+            pt(0, 0),
+            pt(4, 4),
+            pt(0, 8),
+          ]),
+        ];
+      },
+    },
+    {
+      id: 'pabellon',
+      name: 'Pabellón',
+      description: 'Piramidal',
+      build() {
+        return [
+          pano('Norte', 0, COLORS[1], [
+            pt(0, 0),
+            pt(8, 0),
+            pt(4, 4),
+          ]),
+          pano('Oriente', 90, COLORS[2], [
+            pt(8, 0),
+            pt(8, 8),
+            pt(4, 4),
+          ]),
+          pano('Sur', 180, COLORS[0], [
+            pt(0, 8),
+            pt(8, 8),
             pt(4, 4),
           ]),
           pano('Poniente', 270, COLORS[3], [
@@ -125,6 +180,42 @@
             pt(3, 5),
             pt(3, 14),
             pt(6, 14),
+          ]),
+        ];
+      },
+    },
+    {
+      id: 'tConLimahoya',
+      name: 'T con limahoya',
+      description: 'Dos limahoyas',
+      build() {
+        return [
+          pano('Principal norte', 0, COLORS[1], [
+            pt(0, 0),
+            pt(14, 0),
+            pt(14, 4),
+            pt(0, 4),
+          ]),
+          pano('Principal sur', 180, COLORS[0], [
+            pt(0, 4),
+            pt(14, 4),
+            pt(14, 8),
+            pt(10, 8),
+            pt(7, 5),
+            pt(4, 8),
+            pt(0, 8),
+          ]),
+          pano('Ala poniente', 270, COLORS[3], [
+            pt(4, 8),
+            pt(7, 5),
+            pt(7, 14),
+            pt(4, 14),
+          ]),
+          pano('Ala oriente', 90, COLORS[2], [
+            pt(10, 8),
+            pt(7, 5),
+            pt(7, 14),
+            pt(10, 14),
           ]),
         ];
       },
